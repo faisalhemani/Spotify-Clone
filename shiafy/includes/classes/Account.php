@@ -1,0 +1,95 @@
+<?php
+
+class Account {
+	private $con;
+	private $errorArray;
+	
+	public function __construct($con) {
+		$this->con = $con;
+		$this->errorArray = array();
+	}
+
+	public function login($un, $pw){
+		$pw = md5($pw);
+		$lquery = mysqli_query($this->con, "SELECT * FROM users WHERE username='$un' AND password='$pw'");
+		if(mysqli_num_rows($lquery) == 1){
+			return true;
+		}
+		else {
+			array_push($this->errorArray, Constants::$loginFailed);
+			return false;
+		}
+	}
+
+	public function register ($un, $fn, $ln, $em, $em2, $pw, $pw2){
+		$this->valalidateUsername($un);
+		$this->valalidateEmails($em, $em2);
+		$this->valalidatePassword($pw, $pw2);
+		if(empty($this->errorArray)){
+			//insert into db
+			return $this->insertUserDetails($un, $fn, $ln, $em, $pw);
+		}
+		else {
+			return false;
+		}
+	}
+	public function getError($error){
+		if(!in_array($error, $this->errorArray)){
+			$error = "";
+		}
+		return "<span class='errorMEssage'>$error</span>";
+	}
+
+	private function insertUserDetails($un, $fn, $ln, $em, $pw){
+		$encryptedpw = md5($pw);
+		$profilePic = "assets/images/profilePics/pic1.jpeg";
+		$date = date("Y-m-d");
+		$query = "INSERT INTO users VALUES ('', '$un', '$fn', '$ln', '$em', '$encryptedpw', '$date', '$profilePic')";
+		$result = mysqli_query($this->con, $query);
+		return $result;
+	}
+
+	private function valalidateUsername($un){
+		if(strlen($un) > 25 || strlen($un) < 5){
+			array_push($this->errorArray, Constants::$invalidUsername);
+			return;
+		}
+		$uquery = "SELECT username FROM users WHERE username='$un'";
+		$checkUsername = mysqli_query($this->con, $uquery);
+		if (mysqli_num_rows($checkUsername) != 0){
+			array_push($this->errorArray, Constants::$usernameTaken);
+			return;
+		}
+	}
+	private function valalidateEmails($em, $em2){
+		if ($em != $em2){
+			array_push($this->errorArray, Constants::$emailsDoNotMatch);
+			return;
+		}
+		if(!filter_var($em, FILTER_VALIDATE_EMAIL)){
+			array_push($this->errorArray, Constants::$invalidEmail);
+			return;
+		}
+		$emquery = "SELECT email FROM users WHERE email='$em'";
+		$checkEmail = mysqli_query($this->con, $emquery);
+		if (mysqli_num_rows($checkEmail) != 0){
+			array_push($this->errorArray, Constants::$emailTaken);
+			return;
+		}
+	}
+	private function valalidatePassword($pw, $pw2){
+		if ($pw != $pw2){
+			array_push($this->errorArray, Constants::$passwordsDoNotMatch);
+			return;
+		}
+		if (preg_match('/[^A-Za-z0-9]/', $pw)){
+			array_push($this->errorArray, Constants::$invalidPassword);
+			return;
+		}
+		if(strlen($pw) > 30 || strlen($pw) < 5){
+			array_push($this->errorArray, Constants::$invalidPasswordLength);
+			return;
+		}
+	}
+}
+?>
